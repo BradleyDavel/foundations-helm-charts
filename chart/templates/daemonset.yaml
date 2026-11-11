@@ -1,0 +1,28 @@
+{{- range $key, $config := .Values.workloads.daemonset }}
+{{- with mergeOverwrite (deepCopy $config) (dict "name" $key) }}
+{{- if .enabled }}
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  {{- include "template-service.metadata" (dict "root" $ "item" .) | nindent 2 }}
+spec:
+  {{- if hasKey . "revisionHistoryLimit" }}
+  revisionHistoryLimit: {{ .revisionHistoryLimit }}
+  {{- end }}
+  {{- with .updateStrategy }}
+  updateStrategy:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  {{- if hasKey . "minReadySeconds" }}
+  minReadySeconds: {{ .minReadySeconds }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "template-service.selectorLabels" $ | nindent 6 }}
+      app.kubernetes.io/component: {{ printf "daemonset-%s" .name | quote }}
+  template:
+    {{- include "template-service.podTemplate" (dict "root" $ "item" . "kind" "daemonset") | nindent 4 }}
+{{- end }}
+{{- end }}
+{{- end }}

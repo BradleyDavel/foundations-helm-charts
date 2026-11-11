@@ -1,0 +1,443 @@
+# Workloads owns Deployments, DaemonSets, and StatefulSets.
+# Resource keys are their names. Set enabled: false to disable an inherited entry.
+workloads:
+  deployment:
+    app1:
+      enabled: true
+      resourceName: template-service
+      image:
+        repository: ''
+        pullPolicy: Always
+        tag: ''
+      serviceAccountName: template-service
+      automountServiceAccountToken: true
+      podSecurityContext:
+        fsGroup: 101
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 101
+        runAsGroup: 101
+        allowPrivilegeEscalation: false
+        readOnlyRootFilesystem: true
+        capabilities:
+          drop:
+          - ALL
+      resources:
+        limits:
+          cpu: 500m
+          memory: 320Mi
+        requests:
+          cpu: 50m
+          memory: 256Mi
+      ports:
+      - name: http
+        containerPort: 3099
+        protocol: TCP
+      livenessProbe:
+        httpGet:
+          path: "/template/api/health"
+          port: http
+        initialDelaySeconds: 10
+        periodSeconds: 10
+        timeoutSeconds: 5
+        failureThreshold: 3
+      readinessProbe:
+        httpGet:
+          path: "/template/api/health"
+          port: http
+        initialDelaySeconds: 5
+        periodSeconds: 5
+        timeoutSeconds: 3
+        failureThreshold: 3
+      nodeSelector:
+        intent: apps
+      tolerations: []
+      imagePullSecrets: []
+      env:
+      - name: SERVICE_PORT
+        value: '3099'
+      envFrom: []
+      volumes: []
+      volumeMounts: []
+      additionalContainers: []
+      initContainers: []
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app.kubernetes.io/name
+                  operator: In
+                  values:
+                  - template-service
+              topologyKey: kubernetes.io/hostname
+      replicaCount: 1
+    app2:
+      enabled: false
+      image:
+        repository: ''
+        pullPolicy: Always
+        tag: ''
+      serviceAccountName: template-service
+      automountServiceAccountToken: true
+      podSecurityContext:
+        fsGroup: 101
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 101
+        runAsGroup: 101
+        allowPrivilegeEscalation: false
+        readOnlyRootFilesystem: true
+        capabilities:
+          drop:
+          - ALL
+      resources:
+        limits:
+          cpu: 500m
+          memory: 320Mi
+        requests:
+          cpu: 50m
+          memory: 256Mi
+      ports:
+      - name: http
+        containerPort: 3099
+        protocol: TCP
+      livenessProbe:
+        httpGet:
+          path: "/template/api/health"
+          port: http
+        initialDelaySeconds: 10
+        periodSeconds: 10
+        timeoutSeconds: 5
+        failureThreshold: 3
+      readinessProbe:
+        httpGet:
+          path: "/template/api/health"
+          port: http
+        initialDelaySeconds: 5
+        periodSeconds: 5
+        timeoutSeconds: 3
+        failureThreshold: 3
+      nodeSelector:
+        intent: apps
+      tolerations: []
+      imagePullSecrets: []
+      env:
+      - name: SERVICE_PORT
+        value: '3099'
+      envFrom: []
+      volumes: []
+      volumeMounts: []
+      additionalContainers: []
+      initContainers: []
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app.kubernetes.io/name
+                  operator: In
+                  values:
+                  - template-service
+              topologyKey: kubernetes.io/hostname
+      replicaCount: 1
+  daemonset: {}
+  statefulset: {}
+
+# Security owns ServiceAccounts and RBAC access permissions.
+security:
+  serviceAccount:
+    main:
+      enabled: false
+      resourceName: template-service
+      automountServiceAccountToken: true
+  role:
+    reader:
+      enabled: false
+      rules: []
+  roleBinding:
+    reader:
+      enabled: false
+      roleRef:
+        kind: Role
+        name: reader
+      subjects:
+      - kind: ServiceAccount
+        name: main
+  clusterRole:
+    global-reader:
+      enabled: false
+      rules: []
+  clusterRoleBinding:
+    global-reader:
+      enabled: false
+      roleRef:
+        kind: ClusterRole
+        name: global-reader
+      subjects:
+      - kind: ServiceAccount
+        name: main
+
+# Auto scaling owns HPAs and PDBs.
+autoScaling:
+  hpa:
+    main:
+      enabled: false
+      minReplicas: 1
+      maxReplicas: 5
+      metrics:
+      - type: Resource
+        resource:
+          name: cpu
+          target:
+            type: Utilization
+            averageUtilization: 80
+      workload: app1
+      workloadKind: Deployment
+  pdb:
+    main:
+      enabled: false
+      minAvailable: 1
+      workload: app1
+      workloadKind: Deployment
+
+# Network owns Services and Ingresses.
+network:
+  service:
+    app1:
+      enabled: true
+      resourceName: template-service
+      type: ClusterIP
+      ports:
+      - name: http
+        port: 80
+        targetPort: 3099
+        protocol: TCP
+      workload: app1
+      workloadKind: Deployment
+    app2:
+      enabled: false
+      type: ClusterIP
+      ports:
+      - name: http
+        port: 80
+        targetPort: 3099
+        protocol: TCP
+      workload: app2
+      workloadKind: Deployment
+  ingress:
+    app1:
+      enabled: false
+      resourceName: template-service
+      className: alb
+      annotations:
+        alb.ingress.kubernetes.io/group.name: template-private-alb
+        alb.ingress.kubernetes.io/scheme: internal
+        alb.ingress.kubernetes.io/target-type: ip
+        alb.ingress.kubernetes.io/healthcheck-path: "/template/api/health"
+        alb.ingress.kubernetes.io/healthcheck-port: traffic-port
+        alb.ingress.kubernetes.io/success-codes: '200'
+        alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}]'
+        external-dns.alpha.kubernetes.io/aws-record-types: A
+        external-dns.alpha.kubernetes.io/hostname: app1.example.com
+      hosts: []
+    app2:
+      enabled: false
+      className: alb
+      annotations:
+        alb.ingress.kubernetes.io/group.name: template-public-alb
+        alb.ingress.kubernetes.io/scheme: internet-facing
+        alb.ingress.kubernetes.io/target-type: ip
+        alb.ingress.kubernetes.io/healthcheck-path: "/template/api/health"
+        alb.ingress.kubernetes.io/healthcheck-port: traffic-port
+        alb.ingress.kubernetes.io/success-codes: '200'
+        alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}]'
+        external-dns.alpha.kubernetes.io/aws-record-types: A
+        external-dns.alpha.kubernetes.io/hostname: app2.example.com
+      hosts: []
+
+# Config owns shared environment variables, ConfigMaps, and ExternalSecrets.
+config:
+  env: {}
+  externalSecrets:
+    config:
+      enabled: false
+      targetName: template-service-config
+      refreshInterval: 15s
+      secretStoreRef:
+        name: aws-ssm
+        kind: ClusterSecretStore
+      data:
+      - secretKey: TEMPLATE_CONFIG
+        remoteRef:
+          key: "/template/dev/template-service/config.yaml"
+          conversionStrategy: Default
+          decodingStrategy: None
+          metadataPolicy: None
+  configMaps:
+    config:
+      enabled: false
+      data: {}
+
+# Jobs owns one-off Jobs and CronJobs.
+jobs:
+  job:
+    migration:
+      enabled: false
+      image:
+        repository: ''
+        pullPolicy: Always
+        tag: ''
+      serviceAccountName: template-service
+      automountServiceAccountToken: true
+      podSecurityContext:
+        fsGroup: 101
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 101
+        runAsGroup: 101
+        allowPrivilegeEscalation: false
+        readOnlyRootFilesystem: true
+        capabilities:
+          drop:
+          - ALL
+      resources:
+        limits:
+          cpu: 200m
+          memory: 256Mi
+        requests:
+          cpu: 50m
+          memory: 64Mi
+      ports: []
+      nodeSelector:
+        intent: apps
+      tolerations: []
+      imagePullSecrets: []
+      env:
+      - name: SERVICE_HEALTH_URL
+        value: http://template-service.app.svc/template/api/health
+      - name: FLYWAY_URL
+        value: ''
+      - name: FLYWAY_USER
+        valueFrom:
+          secretKeyRef:
+            name: db-secret
+            key: username
+      - name: FLYWAY_PASSWORD
+        valueFrom:
+          secretKeyRef:
+            name: db-secret
+            key: password
+      - name: FLYWAY_SCHEMAS
+        value: template
+      - name: FLYWAY_BASELINE_ON_MIGRATE
+        value: 'true'
+      - name: FLYWAY_VALIDATE_ON_MIGRATE
+        value: 'true'
+      envFrom: []
+      volumes: []
+      volumeMounts: []
+      additionalContainers: []
+      initContainers: []
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app.kubernetes.io/name
+                  operator: In
+                  values:
+                  - template-service
+              topologyKey: kubernetes.io/hostname
+      backoffLimit: 3
+      activeDeadlineSeconds: 600
+      ttlSecondsAfterFinished: 86400
+      command:
+      - "/bin/sh"
+      - "-c"
+      args:
+      - |
+        set -eu
+        until wget -qO- "$SERVICE_HEALTH_URL" | grep -q "ok"; do
+          echo "Waiting for service..."
+          sleep 5
+        done
+        ./flyway_migrate.sh
+        echo "Migrations completed successfully!"
+  cronJob:
+    maintenance:
+      enabled: false
+      image:
+        repository: ''
+        pullPolicy: Always
+        tag: ''
+      serviceAccountName: template-service
+      automountServiceAccountToken: true
+      podSecurityContext:
+        fsGroup: 101
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 101
+        runAsGroup: 101
+        allowPrivilegeEscalation: false
+        readOnlyRootFilesystem: true
+        capabilities:
+          drop:
+          - ALL
+      resources:
+        limits:
+          cpu: 500m
+          memory: 320Mi
+        requests:
+          cpu: 50m
+          memory: 256Mi
+      ports: []
+      nodeSelector:
+        intent: apps
+      tolerations: []
+      imagePullSecrets: []
+      env: []
+      envFrom: []
+      volumes: []
+      volumeMounts: []
+      additionalContainers: []
+      initContainers: []
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app.kubernetes.io/name
+                  operator: In
+                  values:
+                  - template-service
+              topologyKey: kubernetes.io/hostname
+      schedule: 0 2 * * *
+      concurrencyPolicy: Forbid
+      suspend: false
+      successfulJobsHistoryLimit: 1
+      failedJobsHistoryLimit: 1
+      backoffLimit: 1
+      activeDeadlineSeconds: 600
+      command:
+      - "/bin/sh"
+      - "-c"
+      args:
+      - echo "Replace with your scheduled task"
+
+# Storage owns PVs, PVCs, StorageClasses, etc.
+storage:
+  persistentVolumeClaims:
+    data:
+      enabled: false
+      accessModes:
+      - ReadWriteOnce
+      storage: 1Gi

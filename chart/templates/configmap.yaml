@@ -1,0 +1,25 @@
+{{- range $key, $config := .Values.config.configMaps }}
+{{- with mergeOverwrite (deepCopy $config) (dict "name" $key) }}
+{{- if .enabled }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  {{- include "template-service.metadata" (dict "root" $ "item" .) | nindent 2 }}
+
+{{- if hasKey . "immutable" }}
+immutable: {{ .immutable }}
+{{- end }}
+{{- with .data }}
+data:
+  {{- range $key, $value := . }}
+  {{ $key }}: {{ $value | toString | quote }}
+  {{- end }}
+{{- end }}
+{{- with .binaryData }}
+binaryData:
+  {{- toYaml . | nindent 2 }}
+{{- end }}
+{{- end }}
+{{- end }}
+{{- end }}

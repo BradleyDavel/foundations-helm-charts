@@ -1,0 +1,13 @@
+{{- range $key, $config := .Values.security.clusterRole }}
+{{- with mergeOverwrite (deepCopy $config) (dict "name" $key) }}
+{{- if .enabled }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  {{- include "template-service.metadata" (dict "root" $ "item" . "clusterScoped" true) | nindent 2 }}
+rules:
+  {{- toYaml .rules | nindent 2 }}
+{{- end }}
+{{- end }}
+{{- end }}

@@ -1,0 +1,41 @@
+{{- range $key, $config := .Values.workloads.statefulset }}
+{{- with mergeOverwrite (deepCopy $config) (dict "name" $key) }}
+{{- if .enabled }}
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  {{- include "template-service.metadata" (dict "root" $ "item" .) | nindent 2 }}
+spec:
+  {{- if ne (include "template-service.autoscaled" (dict "root" $ "item" . "kind" "StatefulSet")) "true" }}
+  replicas: {{ if hasKey . "replicaCount" }}{{ .replicaCount }}{{ else }}1{{ end }}
+  {{- end }}
+  {{- if hasKey . "revisionHistoryLimit" }}
+  revisionHistoryLimit: {{ .revisionHistoryLimit }}
+  {{- end }}
+  {{- with .updateStrategy }}
+  updateStrategy:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  {{- if hasKey . "minReadySeconds" }}
+  minReadySeconds: {{ .minReadySeconds }}
+  {{- end }}
+  serviceName: {{ include "template-service.referenceName" (dict "root" $ "items" $.Values.network.service "name" .service "externalName" .serviceName) }}
+  podManagementPolicy: {{ .podManagementPolicy | default "OrderedReady" }}
+  {{- with .volumeClaimTemplates }}
+  volumeClaimTemplates:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  {{- with .persistentVolumeClaimRetentionPolicy }}
+  persistentVolumeClaimRetentionPolicy:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "template-service.selectorLabels" $ | nindent 6 }}
+      app.kubernetes.io/component: {{ printf "statefulset-%s" .name | quote }}
+  template:
+    {{- include "template-service.podTemplate" (dict "root" $ "item" . "kind" "statefulset") | nindent 4 }}
+{{- end }}
+{{- end }}
+{{- end }}

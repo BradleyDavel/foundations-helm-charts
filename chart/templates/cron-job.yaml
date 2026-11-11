@@ -1,0 +1,34 @@
+{{- range $key, $config := .Values.jobs.cronJob }}
+{{- with mergeOverwrite (deepCopy $config) (dict "name" $key) }}
+{{- if .enabled }}
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  {{- include "template-service.metadata" (dict "root" $ "item" .) | nindent 2 }}
+
+spec:
+  schedule: {{ .schedule | quote }}
+  {{- with .timeZone }}
+  timeZone: {{ . | quote }}
+  {{- end }}
+  concurrencyPolicy: {{ .concurrencyPolicy | default "Forbid" }}
+  suspend: {{ .suspend | default false }}
+  {{- $item := . }}
+  {{- range $field := list "startingDeadlineSeconds" "successfulJobsHistoryLimit" "failedJobsHistoryLimit" }}
+  {{- if hasKey $item $field }}
+  {{ $field }}: {{ index $item $field }}
+  {{- end }}
+  {{- end }}
+  jobTemplate:
+    spec:
+      {{- range $field := list "backoffLimit" "activeDeadlineSeconds" "ttlSecondsAfterFinished" "parallelism" "completions" }}
+      {{- if hasKey $item $field }}
+      {{ $field }}: {{ index $item $field }}
+      {{- end }}
+      {{- end }}
+      template:
+        {{- include "template-service.podTemplate" (dict "root" $ "item" . "kind" "cronjob") | nindent 8 }}
+{{- end }}
+{{- end }}
+{{- end }}

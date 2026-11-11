@@ -1,0 +1,20 @@
+{{- range $key, $config := .Values.jobs.job }}
+{{- with mergeOverwrite (deepCopy $config) (dict "name" $key) }}
+{{- if .enabled }}
+{{- $item := . }}
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  {{- include "template-service.metadata" (dict "root" $ "item" $item) | nindent 2 }}
+spec:
+  {{- range $field := list "backoffLimit" "activeDeadlineSeconds" "ttlSecondsAfterFinished" "parallelism" "completions" }}
+  {{- if hasKey $item $field }}
+  {{ $field }}: {{ index $item $field }}
+  {{- end }}
+  {{- end }}
+  template:
+    {{- include "template-service.podTemplate" (dict "root" $ "item" $item "kind" "job") | nindent 4 }}
+{{- end }}
+{{- end }}
+{{- end }}

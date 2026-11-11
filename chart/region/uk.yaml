@@ -1,0 +1,36 @@
+# Workloads owns Deployments, DaemonSets, and StatefulSets.
+workloads:
+  deployment:
+    app1:
+      image:
+        repository: 123456789012.dkr.ecr.eu-west-2.amazonaws.com/template/template-service
+    app2:
+      image:
+        repository: 123456789012.dkr.ecr.eu-west-2.amazonaws.com/template/template-service
+  daemonset: {}
+  statefulset: {}
+
+# Security owns ServiceAccounts and RBAC access permissions.
+security: {}
+
+# Auto scaling owns HPAs and PDBs.
+autoScaling: {}
+
+# Network owns Services and Ingresses.
+network: {}
+
+# Config owns shared environment variables, ConfigMaps, and ExternalSecrets.
+config:
+  env:
+    TZ: Europe/London
+
+# Jobs owns one-off Jobs and CronJobs.
+jobs:
+  job:
+    migration:
+      image:
+        repository: 123456789012.dkr.ecr.eu-west-2.amazonaws.com/template/template-service-uk-flyway
+  cronJob: {}
+
+# Storage owns PVs, PVCs, StorageClasses, etc.
+storage: {}

@@ -1,0 +1,12 @@
+apiVersion: v2
+name: template-service
+description: Golden path service chart with optional repeatable resources
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+maintainers:
+  - name: Platform Team
+    email: Platform@yourdomain.com
+keywords:
+  - template
+  - service

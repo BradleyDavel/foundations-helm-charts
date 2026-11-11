@@ -1,0 +1,13 @@
+helmDefaults:
+  wait: true
+  atomic: false
+
+releases:
+  - name: template-service
+    namespace: app
+    chart: ./chart
+    createNamespace: false
+    values:
+      - ./chart/values.yaml
+      - ./chart/region/{{ env "region" | default "uk" }}.yaml
+      - ./chart/environments/{{ env "env" | default "dev" }}.yaml

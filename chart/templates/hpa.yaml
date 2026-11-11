@@ -1,0 +1,25 @@
+{{- range $key, $config := .Values.autoScaling.hpa }}
+{{- with mergeOverwrite (deepCopy $config) (dict "name" $key) }}
+{{- if .enabled }}
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  {{- include "template-service.metadata" (dict "root" $ "item" .) | nindent 2 }}
+
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: {{ .workloadKind | default "Deployment" }}
+    name: {{ include "template-service.workloadName" (dict "root" $ "item" .) }}
+  minReplicas: {{ .minReplicas }}
+  maxReplicas: {{ .maxReplicas }}
+  {{- with .behavior }}
+  behavior:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  metrics:
+    {{- toYaml .metrics | nindent 4 }}
+{{- end }}
+{{- end }}
+{{- end }}

@@ -1,0 +1,27 @@
+{{- include "template-service.validate" . }}
+{{- range $key, $config := .Values.workloads.deployment }}
+{{- with mergeOverwrite (deepCopy $config) (dict "name" $key) }}
+{{- if .enabled }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  {{- include "template-service.metadata" (dict "root" $ "item" .) | nindent 2 }}
+spec:
+  {{- if ne (include "template-service.autoscaled" (dict "root" $ "item" . "kind" "Deployment")) "true" }}
+  replicas: {{ if hasKey . "replicaCount" }}{{ .replicaCount }}{{ else }}1{{ end }}
+  {{- end }}
+  revisionHistoryLimit: {{ if hasKey . "revisionHistoryLimit" }}{{ .revisionHistoryLimit }}{{ else }}3{{ end }}
+  {{- with .strategy }}
+  strategy:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "template-service.selectorLabels" $ | nindent 6 }}
+      app.kubernetes.io/component: {{ printf "deployment-%s" .name | quote }}
+  template:
+    {{- include "template-service.podTemplate" (dict "root" $ "item" . "kind" "deployment") | nindent 4 }}
+{{- end }}
+{{- end }}
+{{- end }}

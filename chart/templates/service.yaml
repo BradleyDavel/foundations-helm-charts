@@ -1,0 +1,28 @@
+{{- range $key, $config := .Values.network.service }}
+{{- with mergeOverwrite (deepCopy $config) (dict "name" $key) }}
+{{- if .enabled }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  {{- include "template-service.metadata" (dict "root" $ "item" .) | nindent 2 }}
+
+spec:
+  type: {{ .type | default "ClusterIP" }}
+  {{- if hasKey . "clusterIP" }}
+  clusterIP: {{ .clusterIP | quote }}
+  {{- end }}
+  {{- with .externalTrafficPolicy }}
+  externalTrafficPolicy: {{ . }}
+  {{- end }}
+  ports:
+    {{- toYaml .ports | nindent 4 }}
+  selector:
+    {{- if .selector }}
+    {{- toYaml .selector | nindent 4 }}
+    {{- else }}
+    {{- include "template-service.workloadSelector" (dict "root" $ "item" .) | nindent 4 }}
+    {{- end }}
+{{- end }}
+{{- end }}
+{{- end }}

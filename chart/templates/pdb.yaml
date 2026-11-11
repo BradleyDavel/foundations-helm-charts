@@ -1,0 +1,25 @@
+{{- range $key, $config := .Values.autoScaling.pdb }}
+{{- with mergeOverwrite (deepCopy $config) (dict "name" $key) }}
+{{- if .enabled }}
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  {{- include "template-service.metadata" (dict "root" $ "item" .) | nindent 2 }}
+
+spec:
+  {{- if hasKey . "maxUnavailable" }}
+  maxUnavailable: {{ .maxUnavailable }}
+  {{- else }}
+  minAvailable: {{ .minAvailable }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- if .selector }}
+      {{- toYaml .selector | nindent 6 }}
+      {{- else }}
+      {{- include "template-service.workloadSelector" (dict "root" $ "item" .) | nindent 6 }}
+      {{- end }}
+{{- end }}
+{{- end }}
+{{- end }}

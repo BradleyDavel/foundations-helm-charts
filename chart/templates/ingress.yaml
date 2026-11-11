@@ -1,0 +1,39 @@
+{{- range $key, $config := .Values.network.ingress }}
+{{- with mergeOverwrite (deepCopy $config) (dict "name" $key) }}
+{{- if .enabled }}
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  {{- include "template-service.metadata" (dict "root" $ "item" .) | nindent 2 }}
+
+spec:
+  {{- with .className }}
+  ingressClassName: {{ . | quote }}
+  {{- end }}
+  {{- with .tls }}
+  tls:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  rules:
+    {{- range .hosts }}
+    - host: {{ .host | quote }}
+      http:
+        paths:
+          {{- range .paths }}
+          - path: {{ .path | quote }}
+            pathType: {{ .pathType | default "Prefix" }}
+            backend:
+              service:
+                name: {{ include "template-service.referenceName" (dict "root" $ "items" $.Values.network.service "name" .service "externalName" .serviceName) }}
+                port:
+                  {{- if kindIs "string" (.servicePort | default "http") }}
+                  name: {{ .servicePort | default "http" | quote }}
+                  {{- else }}
+                  number: {{ .servicePort }}
+                  {{- end }}
+          {{- end }}
+    {{- end }}
+{{- end }}
+{{- end }}
+{{- end }}

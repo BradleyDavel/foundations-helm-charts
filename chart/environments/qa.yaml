@@ -1,0 +1,95 @@
+# Workloads owns Deployments, DaemonSets, and StatefulSets.
+workloads:
+  deployment:
+    app1:
+      image:
+        tag: latest
+      volumes:
+      - name: app-config
+        secret:
+          secretName: template-service-qa-config
+          items:
+          - key: TEMPLATE_CONFIG
+            path: config.yaml
+      volumeMounts:
+      - name: app-config
+        mountPath: "/app/deploy/config/config.yaml"
+        subPath: config.yaml
+        readOnly: true
+    app2:
+      enabled: false
+      image:
+        tag: latest
+      volumes:
+      - name: app-config
+        secret:
+          secretName: template-service-qa-config
+          items:
+          - key: TEMPLATE_CONFIG
+            path: config.yaml
+      volumeMounts:
+      - name: app-config
+        mountPath: "/app/deploy/config/config.yaml"
+        subPath: config.yaml
+        readOnly: true
+
+# Network owns Services and Ingresses.
+network:
+  service:
+    app2:
+      enabled: false
+  ingress:
+    app1:
+      enabled: false
+      annotations:
+        external-dns.alpha.kubernetes.io/hostname: app1.qa.example.com
+        # alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:<region>:<account-id>:certificate/<certificate-id>
+        # alb.ingress.kubernetes.io/wafv2-acl-arn: arn:aws:wafv2:<region>:<account-id>:regional/webacl/<web-acl-name>/<web-acl-id>
+      hosts:
+      - host: app1.qa.example.com
+        paths:
+        - path: /
+          pathType: Prefix
+          service: app1
+          servicePort: http
+    app2:
+      enabled: false
+      annotations:
+        external-dns.alpha.kubernetes.io/hostname: app2.qa.example.com
+        # alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:<region>:<account-id>:certificate/<certificate-id>
+        # alb.ingress.kubernetes.io/wafv2-acl-arn: arn:aws:wafv2:<region>:<account-id>:regional/webacl/<web-acl-name>/<web-acl-id>
+      hosts:
+      - host: app2.qa.example.com
+        paths:
+        - path: /
+          pathType: Prefix
+          service: app2
+          servicePort: http
+
+# Config owns shared environment variables, ConfigMaps, and ExternalSecrets.
+config:
+  env:
+    NODE_ENV: qa
+  externalSecrets:
+    config:
+      enabled: true
+      targetName: template-service-qa-config
+      refreshInterval: 15s
+      secretStoreRef:
+        name: aws-ssm
+        kind: ClusterSecretStore
+      data:
+      - secretKey: TEMPLATE_CONFIG
+        remoteRef:
+          key: "/template/qa/template-service/config.yaml"
+          conversionStrategy: Default
+          decodingStrategy: None
+          metadataPolicy: None
+      resourceName: template-service-qa-config
+
+# Jobs owns one-off Jobs and CronJobs.
+jobs:
+  job:
+    migration:
+      image:
+        tag: latest
